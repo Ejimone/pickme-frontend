@@ -34,11 +34,14 @@ export const qk = {
 
   carpoolGroups: () => ["carpool-groups"] as const,
   carpoolGroup: (id: UUID) => ["carpool-groups", id] as const,
+  carpoolGroupMembers: (id: UUID) => ["carpool-groups", id, "members"] as const,
   rotationRule: (groupId: UUID) => ["carpool-groups", groupId, "rotation-rule"] as const,
   assignments: (groupId: UUID, range?: { from?: ISODate; to?: ISODate }) =>
     ["assignments", groupId, range ?? {}] as const,
   swapRequests: () => ["swap-requests"] as const,
 
+  trips: (filters?: { date?: ISODate; carpool_group?: UUID }) =>
+    ["trips", filters ?? {}] as const,
   trip: (tripId: UUID) => ["trip", tripId] as const,
   tripLatestLocation: (tripId: UUID) => ["trip", tripId, "latest-location"] as const,
 
