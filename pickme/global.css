@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * PickMe — Uber "Base" design tokens.
+ * Monochrome canvas, color-as-signal. First-class light + dark.
+ * Values are HSL channels (no hsl() wrapper) so Tailwind can compose them.
+ * See FRONTEND-ARCHITECTURE.md §6 — keep in lockstep with lib/theme.ts.
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* pure white */
+    --foreground: 0 0% 0%; /* pure black */
+    --card: 0 0% 100%; /* white cards, separated by borders not shadows */
+    --card-secondary: 0 0% 96%; /* #F6F6F6 — gray panels, list rows */
+    --primary: 0 0% 0%; /* BLACK is the primary — buttons, active tab */
+    --primary-foreground: 0 0% 100%;
+    --muted: 0 0% 93%; /* #EEEEEE */
+    --muted-foreground: 0 0% 46%; /* #757575 */
+    --border: 0 0% 89%; /* #E2E2E2 */
+    --accent: 221 88% 55%; /* #276EF1 — live / interactive / link */
+    --success: 152 94% 33%; /* #05A357 — confirmed, picked up */
+    --warning: 42 100% 63%; /* #FFC043 — pending, suggested */
+    --destructive: 8 100% 44%; /* #E11900 — SOS, missed ONLY */
+    --radius: 8px; /* crisp, not bubbly */
+  }
+
+  .dark:root {
+    --background: 0 0% 8%; /* #141414 — near-black, not pure black */
+    --foreground: 0 0% 100%;
+    --card: 0 0% 12%; /* #1F1F1F */
+    --card-secondary: 0 0% 20%; /* #333333 */
+    --primary: 0 0% 100%; /* inverted: WHITE buttons on dark */
+    --primary-foreground: 0 0% 0%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 69%; /* #AFAFAF */
+    --border: 0 0% 20%;
+    --accent: 221 88% 61%; /* blue lifted slightly for dark contrast */
+    --success: 152 70% 42%; /* hue kept, lightness nudged up */
+    --warning: 42 100% 63%; /* yellow unchanged — keeps dark text both modes */
+    --destructive: 8 90% 54%; /* red lifted for dark contrast */
+  }
+}
