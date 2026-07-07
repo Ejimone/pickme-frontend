@@ -37,3 +37,11 @@ export function useCreateFamily() {
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.families() }),
   });
 }
+
+/** Email a co-parent an invite to join the family. */
+export function useInviteMember() {
+  return useMutation({
+    mutationFn: ({ familyId, email }: { familyId: UUID; email: string }) =>
+      api.post(`/families/${familyId}/members/invite`, { email }),
+  });
+}

@@ -4,11 +4,12 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { AppleLogo, GoogleLogo } from "phosphor-react-native";
 import { useState } from "react";
-import { Platform, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 
-import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { useTheme } from "@/hooks/useTheme";
 import { useWarmUpBrowser } from "@/hooks/useWarmUpBrowser";
+import { clerkError } from "@/lib/clerk-error";
 
 // Dismisses the web browser when auth completes (required by Clerk's Expo flow).
 WebBrowser.maybeCompleteAuthSession();
@@ -16,13 +17,15 @@ WebBrowser.maybeCompleteAuthSession();
 type Strategy = "oauth_google" | "oauth_apple";
 
 /**
- * Clerk social sign-in. One SSO flow serves both sign-in and sign-up — Clerk
- * creates the account on first use. Apple only shows on iOS.
+ * Social sign-in via Clerk SSO. One flow serves sign-in and sign-up — Clerk
+ * creates the account on first use. Apple only shows on iOS. Styled as the
+ * outline buttons from the v2 mockups.
  */
 export function OAuthButtons() {
   useWarmUpBrowser();
   const { startSSOFlow } = useSSO();
   const router = useRouter();
+  const { colors } = useTheme();
   const [pending, setPending] = useState<Strategy | null>(null);
   const [error, setError] = useState<string>();
 
@@ -30,56 +33,31 @@ export function OAuthButtons() {
     setError(undefined);
     setPending(strategy);
     try {
-      const { createdSessionId, setActive, signIn, signUp } =
-        await startSSOFlow({
-          strategy,
-          // Without an explicit scheme the redirect URI can't be inferred in
-          // dev/production builds — the browser finishes auth but never hands
-          // control back to the app, leaving the user stuck on this screen.
-          // No path: the deep link lands on "/" (index), which already routes
-          // by auth state. A dedicated path would need a matching route file.
-          redirectUrl: AuthSession.makeRedirectUri({ scheme: "pickme" }),
-        });
+      const { createdSessionId, setActive, signUp } = await startSSOFlow({
+        strategy,
+        redirectUrl: AuthSession.makeRedirectUri({ scheme: "pickme" }),
+      });
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
         router.replace("/");
         return;
       }
-
-      // No session yet — usually a sign-up with unmet instance requirements.
-      if (signUp?.status === "missing_requirements") {
-        console.log("[auth] sign-up incomplete", {
-          missingFields: signUp.missingFields,
-          unverifiedFields: signUp.unverifiedFields,
-        });
-        // Terms consent is the one requirement we can satisfy here — the
-        // screen already states "By continuing you agree…".
-        if (
-          signUp.missingFields.length === 1 &&
-          signUp.missingFields[0] === "legal_accepted"
-        ) {
-          const updated = await signUp.update({ legalAccepted: true });
-          if (updated.status === "complete" && updated.createdSessionId && setActive) {
-            await setActive({ session: updated.createdSessionId });
-            router.replace("/");
-            return;
-          }
+      // Terms consent is the one requirement we can satisfy inline.
+      if (
+        signUp?.status === "missing_requirements" &&
+        signUp.missingFields.length === 1 &&
+        signUp.missingFields[0] === "legal_accepted"
+      ) {
+        const updated = await signUp.update({ legalAccepted: true });
+        if (updated.status === "complete" && updated.createdSessionId && setActive) {
+          await setActive({ session: updated.createdSessionId });
+          router.replace("/");
+          return;
         }
-        const blockers = [
-          ...signUp.missingFields.map((f) => `missing ${f}`),
-          ...signUp.unverifiedFields.map((f) => `unverified ${f}`),
-        ];
-        setError(
-          `Sign-up can't finish: ${blockers.join(", ") || "unknown requirement"}. ` +
-            "Make these optional in the Clerk dashboard (Configure → Email, phone, username).",
-        );
-        return;
       }
-      setError(
-        `Sign-in did not complete (status: ${signIn?.status ?? signUp?.status ?? "unknown"}). Please try again.`,
-      );
+      setError("Couldn't finish sign-in. Please try another method.");
     } catch (err) {
-      setError(clerkError(err));
+      setError(clerkError(err, "Sign-in failed. Please try again."));
     } finally {
       setPending(null);
     }
@@ -87,18 +65,17 @@ export function OAuthButtons() {
 
   return (
     <View className="gap-3">
-      <Button
+      <OAuthButton
         label="Continue with Google"
-        variant="outline"
-        icon={<GoogleLogo size={18} weight="bold" />}
+        icon={<GoogleLogo size={18} weight="bold" color={colors.foreground} />}
         loading={pending === "oauth_google"}
         disabled={pending !== null}
         onPress={() => onPress("oauth_google")}
       />
       {Platform.OS === "ios" ? (
-        <Button
+        <OAuthButton
           label="Continue with Apple"
-          icon={<AppleLogo size={18} weight="fill" color="#FFFFFF" />}
+          icon={<AppleLogo size={18} weight="fill" color={colors.foreground} />}
           loading={pending === "oauth_apple"}
           disabled={pending !== null}
           onPress={() => onPress("oauth_apple")}
@@ -113,11 +90,33 @@ export function OAuthButtons() {
   );
 }
 
-function clerkError(err: unknown): string {
-  const e = err as { errors?: { message?: string; longMessage?: string }[] };
+function OAuthButton({
+  label,
+  icon,
+  loading,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  loading: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}) {
   return (
-    e?.errors?.[0]?.longMessage ??
-    e?.errors?.[0]?.message ??
-    "Sign-in failed. Please try again."
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => (pressed ? { opacity: 0.85 } : undefined)}
+      className={`h-[52px] flex-row items-center justify-center gap-2 rounded-[10px] border border-border bg-background ${
+        disabled ? "opacity-50" : ""
+      }`}
+    >
+      {icon}
+      <Text className="text-[14px] font-bold text-foreground">
+        {loading ? "…" : label}
+      </Text>
+    </Pressable>
   );
 }

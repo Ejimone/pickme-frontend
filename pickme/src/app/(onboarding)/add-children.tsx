@@ -1,34 +1,43 @@
 import { useRouter } from "expo-router";
-import { Plus } from "phosphor-react-native";
+import { Plus, X } from "phosphor-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 
+import { AuthHeader } from "@/components/auth/AuthHeader";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
 import { Text } from "@/components/ui/text";
 import { Screen } from "@/components/shared/Screen";
-import { useCreateChild } from "@/hooks/api/useChildren";
+import { useChildren, useCreateChild, useDeleteChild } from "@/hooks/api/useChildren";
 import { useFamilies } from "@/hooks/api/useFamilies";
 import { useSchools } from "@/hooks/api/useSchools";
 import { CHILD_COLOR_TAGS } from "@/lib/theme";
 
+/**
+ * Onboarding step 2 — add each child (name, grade, school, color tag). Added
+ * children appear as chips; the primary CTA adds the current child and advances.
+ */
 export default function AddChildren() {
   const router = useRouter();
   const families = useFamilies();
   const schools = useSchools();
+  const kids = useChildren();
   const createChild = useCreateChild();
+  const deleteChild = useDeleteChild();
 
   const familyId = families.data?.[0]?.id;
+  const added = kids.data ?? [];
+
   const [name, setName] = useState("");
   const [grade, setGrade] = useState("");
-  const [colorTag, setColorTag] = useState<string>(CHILD_COLOR_TAGS[0]);
   const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [added, setAdded] = useState<{ name: string; color: string }[]>([]);
+  const [colorTag, setColorTag] = useState<string>(CHILD_COLOR_TAGS[0]);
 
-  async function addChild() {
-    if (!familyId || name.trim().length === 0) return;
+  const schoolName = schools.data?.find((s) => s.id === schoolId)?.name;
+
+  async function addChild(): Promise<boolean> {
+    if (!familyId || name.trim().length === 0) return false;
     await createChild.mutateAsync({
       family: familyId,
       full_name: name.trim(),
@@ -36,56 +45,113 @@ export default function AddChildren() {
       color_tag: colorTag,
       school: schoolId,
     });
-    setAdded((prev) => [...prev, { name: name.trim(), color: colorTag }]);
     setName("");
     setGrade("");
-    const next = CHILD_COLOR_TAGS[added.length + 1] ?? CHILD_COLOR_TAGS[0];
-    setColorTag(next);
+    setSchoolId(null);
+    setColorTag(CHILD_COLOR_TAGS[added.length + 1] ?? CHILD_COLOR_TAGS[0]);
+    return true;
   }
 
+  async function onPrimary() {
+    if (name.trim().length > 0) {
+      await addChild();
+    }
+    router.replace("/(onboarding)/schedule");
+  }
+
+  const firstName = name.trim().split(/\s+/)[0];
+  const primaryLabel = name.trim().length > 0 ? `Add ${firstName} + continue` : "Continue";
+  const canProceed = name.trim().length > 0 || added.length > 0;
+
   return (
-    <Screen>
+    <Screen padded={false}>
       <ScrollView
-        contentContainerClassName="gap-6 pb-8"
+        contentContainerClassName="px-5 pb-8"
         keyboardShouldPersistTaps="handled"
       >
-        <View className="gap-2 pt-4">
-          <Text variant="caption">Step 2 of 2</Text>
-          <Text variant="display">Add your children</Text>
-          <Text variant="body" className="text-muted-foreground">
-            Add each child you coordinate pickups for.
-          </Text>
-        </View>
+        <AuthHeader step={2} />
+
+        <Text className="mt-4 text-[28px] font-bold text-foreground">Add your kids</Text>
 
         {added.length > 0 ? (
-          <View className="gap-2">
-            {added.map((c, i) => (
-              <Card key={i}>
-                <View className="flex-row items-center gap-3">
-                  <Avatar name={c.name} size={40} ringColor={c.color} />
-                  <Text variant="title">{c.name}</Text>
+          <View className="mt-6 gap-2">
+            {added.map((c) => (
+              <View
+                key={c.id}
+                className="flex-row items-center gap-3 rounded-[10px] bg-card-secondary px-3 py-3"
+              >
+                <Avatar name={c.full_name} size={42} ringColor={c.color_tag} />
+                <View className="flex-1">
+                  <Text className="text-[14px] font-bold text-foreground">
+                    {c.full_name}
+                    {c.grade ? ` · Grade ${c.grade}` : ""}
+                  </Text>
+                  <Text variant="caption">
+                    {schools.data?.find((s) => s.id === c.school)?.name ?? "No school yet"}
+                  </Text>
                 </View>
-              </Card>
+                <Pressable
+                  onPress={() => deleteChild.mutate(c.id)}
+                  hitSlop={10}
+                  accessibilityLabel={`Remove ${c.full_name}`}
+                >
+                  <X size={16} color="#afafaf" weight="bold" />
+                </Pressable>
+              </View>
             ))}
           </View>
         ) : null}
 
-        <View className="gap-4">
-          <Input
-            label="Child’s name"
+        <View className="mt-6 gap-6">
+          <Field
+            label="Child's name"
             value={name}
             onChangeText={setName}
-            placeholder="Ada"
+            placeholder="Noah"
           />
-          <Input
-            label="Grade (optional)"
+          <Field
+            label="Grade"
             value={grade}
             onChangeText={setGrade}
-            placeholder="3"
+            placeholder="7"
           />
 
           <View className="gap-2">
-            <Text variant="label" className="text-muted-foreground">
+            <Text className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
+              School
+            </Text>
+            <View className="overflow-hidden rounded-[10px] border border-border">
+              {(schools.data ?? []).map((s, i) => {
+                const selected = schoolId === s.id;
+                return (
+                  <Pressable
+                    key={s.id}
+                    onPress={() => setSchoolId(selected ? null : s.id)}
+                    className={`px-4 py-3 ${i > 0 ? "border-t border-border" : ""} ${
+                      selected ? "bg-accent/10" : "bg-card"
+                    }`}
+                  >
+                    <Text className="text-[14px] font-bold text-foreground">{s.name}</Text>
+                    {s.address ? <Text variant="caption">{s.address}</Text> : null}
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                onPress={() => router.push("/(onboarding)/add-school")}
+                className={`px-4 py-3 ${
+                  (schools.data?.length ?? 0) > 0 ? "border-t border-border" : ""
+                }`}
+              >
+                <Text className="text-[13px] font-bold text-accent">+ Add a new school</Text>
+              </Pressable>
+            </View>
+            {schoolName ? (
+              <Text variant="caption">Selected: {schoolName}</Text>
+            ) : null}
+          </View>
+
+          <View className="gap-2">
+            <Text className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
               Color tag
             </Text>
             <View className="flex-row flex-wrap gap-3">
@@ -106,54 +172,26 @@ export default function AddChildren() {
             </View>
           </View>
 
-          {schools.data && schools.data.length > 0 ? (
-            <View className="gap-2">
-              <Text variant="label" className="text-muted-foreground">
-                School (optional)
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {schools.data.map((s) => (
-                  <Pressable
-                    key={s.id}
-                    onPress={() =>
-                      setSchoolId((prev) => (prev === s.id ? null : s.id))
-                    }
-                    className={
-                      schoolId === s.id
-                        ? "rounded-full bg-primary px-3 py-1.5"
-                        : "rounded-full bg-card-secondary px-3 py-1.5"
-                    }
-                  >
-                    <Text
-                      variant="label"
-                      className={
-                        schoolId === s.id
-                          ? "text-primary-foreground"
-                          : "text-foreground"
-                      }
-                    >
-                      {s.name}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
+          {name.trim().length > 0 && added.length >= 0 ? (
+            <Pressable
+              onPress={addChild}
+              disabled={createChild.isPending}
+              className="flex-row items-center gap-1.5 self-start"
+            >
+              <Plus size={15} color="#276ef1" weight="bold" />
+              <Text className="text-[13px] font-bold text-accent">Save and add another</Text>
+            </Pressable>
           ) : null}
-
-          <Button
-            label="Add child"
-            variant="secondary"
-            icon={<Plus size={16} weight="bold" />}
-            loading={createChild.isPending}
-            disabled={name.trim().length === 0}
-            onPress={addChild}
-          />
         </View>
 
-        <Button
-          label={added.length > 0 ? "Done" : "Skip for now"}
-          onPress={() => router.replace("/(tabs)")}
-        />
+        <View className="mt-8">
+          <Button
+            label={primaryLabel}
+            loading={createChild.isPending}
+            disabled={!canProceed}
+            onPress={onPrimary}
+          />
+        </View>
       </ScrollView>
     </Screen>
   );

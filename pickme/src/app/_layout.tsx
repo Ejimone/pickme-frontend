@@ -54,7 +54,7 @@ function useAuthGate() {
     if (!isLoaded) return;
     const inAuthGroup = segments[0] === "(auth)";
     if (!isSignedIn && !inAuthGroup) {
-      router.replace("/(auth)/sign-in");
+      router.replace("/(auth)/welcome");
     } else if (isSignedIn && inAuthGroup) {
       router.replace("/");
     }

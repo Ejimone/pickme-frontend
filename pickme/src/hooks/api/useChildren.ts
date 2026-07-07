@@ -42,3 +42,11 @@ export function useCreateChild() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["children"] }),
   });
 }
+
+export function useDeleteChild() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: UUID) => api.delete(`/children/${id}/`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["children"] }),
+  });
+}
