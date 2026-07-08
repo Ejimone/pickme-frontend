@@ -1,7 +1,7 @@
 /**
  * TS mirror of the global.css design tokens, for the places NativeWind
- * classNames can't reach: native APIs (StatusBar, tab bar), react-native-maps
- * styling, and reanimated color interpolation. Keep in lockstep with
+ * classNames can't reach: native APIs (StatusBar, tab bar), the Leaflet map
+ * markers, and reanimated color interpolation. Keep in lockstep with
  * global.css (FRONTEND-ARCHITECTURE.md §6).
  */
 

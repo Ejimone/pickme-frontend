@@ -35,7 +35,8 @@ export const qk = {
   carpoolGroups: () => ["carpool-groups"] as const,
   carpoolGroup: (id: UUID) => ["carpool-groups", id] as const,
   carpoolGroupMembers: (id: UUID) => ["carpool-groups", id, "members"] as const,
-  rotationRule: (groupId: UUID) => ["carpool-groups", groupId, "rotation-rule"] as const,
+  rotationRule: (groupId: UUID) =>
+    ["carpool-groups", groupId, "rotation-rule"] as const,
   assignments: (groupId: UUID, range?: { from?: ISODate; to?: ISODate }) =>
     ["assignments", groupId, range ?? {}] as const,
   swapRequests: () => ["swap-requests"] as const,
@@ -43,7 +44,8 @@ export const qk = {
   trips: (filters?: { date?: ISODate; carpool_group?: UUID }) =>
     ["trips", filters ?? {}] as const,
   trip: (tripId: UUID) => ["trip", tripId] as const,
-  tripLatestLocation: (tripId: UUID) => ["trip", tripId, "latest-location"] as const,
+  tripLatestLocation: (tripId: UUID) =>
+    ["trip", tripId, "latest-location"] as const,
 
   pickupEvents: (filters?: { date?: ISODate; family?: UUID }) =>
     ["pickup-events", filters ?? {}] as const,
@@ -55,5 +57,6 @@ export const qk = {
     ["notifications", filters ?? {}] as const,
   notificationPreferences: () => ["notification-preferences"] as const,
 
-  sosAlerts: (filters?: { status?: string }) => ["sos-alerts", filters ?? {}] as const,
+  sosAlerts: (filters?: { status?: string }) =>
+    ["sos-alerts", filters ?? {}] as const,
 } as const;

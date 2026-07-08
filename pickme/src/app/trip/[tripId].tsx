@@ -9,7 +9,7 @@ import { Text } from "@/components/ui/text";
 import { IconButton } from "@/components/ui/icon-button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SOSBanner } from "@/components/trip/SOSBanner";
-import { TripMap, TripMapWaiting, type MapStop } from "@/components/trip/TripMap";
+import { LeafletMap, TripMapWaiting, type MapStop } from "@/components/trip/LeafletMap";
 import { useMe } from "@/hooks/api/useMe";
 import { useSchools } from "@/hooks/api/useSchools";
 import { useRaiseSOS, useResolveSOS, useSOSAlerts } from "@/hooks/api/useSOS";
@@ -21,12 +21,18 @@ import {
   useUpdateStop,
 } from "@/hooks/api/useTrips";
 import { useDriverBroadcast } from "@/hooks/useDriverBroadcast";
+import { useMyLocation } from "@/hooks/useMyLocation";
 import { useTripTracking } from "@/hooks/useTripTracking";
 import { useTheme } from "@/hooks/useTheme";
+import { formatCountdown } from "@/lib/date";
+import { distanceMeters, etaMinutes } from "@/lib/geo";
 import { openDirections } from "@/lib/maps";
 
 export default function TripScreen() {
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const { tripId, driver: driverParam } = useLocalSearchParams<{
+    tripId: string;
+    driver?: string;
+  }>();
   const router = useRouter();
   const { colors } = useTheme();
 
@@ -37,7 +43,11 @@ export default function TripScreen() {
   const tracking = useTripTracking(tripId);
   const activeSos = useSOSAlerts({ status: "active" });
 
-  const isDriver = !!me.data && me.data.id === trip.data?.driver;
+  // The creator arrives with ?driver=1 so they get driver controls even before
+  // /me/ resolves (or if it isn't available); the API still enforces driver-only
+  // actions server-side.
+  const isDriver =
+    driverParam === "1" || (!!me.data && me.data.id === trip.data?.driver);
   const inProgress = trip.data?.status === "in_progress";
 
   const { permission } = useDriverBroadcast({
@@ -86,12 +96,27 @@ export default function TripScreen() {
     [stops, schoolCoords, schools.data],
   );
 
+  // Watchers (not the driver) see their own "you are here" dot on the map.
+  const viewerLocation = useMyLocation(!isDriver);
+
   const currentStop = stops.find(
     (s) => s.status !== "picked_up" && s.status !== "skipped",
   );
   const currentStopCoords = currentStop?.school
     ? schoolCoords.get(currentStop.school)
     : undefined;
+
+  // Live ETA to the next stop: prefer the backend's computed eta, else estimate
+  // from the driver's distance to the stop and current speed.
+  const etaText = useMemo(() => {
+    if (!inProgress || !currentStop) return null;
+    if (currentStop.eta) return formatCountdown(currentStop.eta);
+    if (driver && currentStopCoords) {
+      const meters = distanceMeters(driver, currentStopCoords);
+      return `~${etaMinutes(meters, latest.data?.speed)} min`;
+    }
+    return null;
+  }, [inProgress, currentStop, driver, currentStopCoords, latest.data?.speed]);
 
   function navigateToCurrentStop() {
     if (currentStopCoords) {
@@ -129,7 +154,15 @@ export default function TripScreen() {
   return (
     <View className="flex-1 bg-background">
       <View className="flex-1">
-        {driver ? <TripMap driver={driver} stops={mapStops} /> : <TripMapWaiting />}
+        {driver ? (
+          <LeafletMap
+            driver={driver}
+            viewer={!isDriver ? viewerLocation : null}
+            stops={mapStops}
+          />
+        ) : (
+          <TripMapWaiting />
+        )}
         <SafeAreaView
           edges={["top", "left", "right"]}
           className="absolute left-0 right-0 top-0"
@@ -174,7 +207,14 @@ export default function TripScreen() {
                 {trip.data?.tracking_mode === "live_gps" ? "Live GPS trip" : "Status-only trip"}
               </Text>
             </View>
-            <StatusBadge status={trip.data?.status ?? "not_started"} />
+            <View className="items-end gap-1">
+              {etaText ? (
+                <View className="rounded-full bg-accent/15 px-2.5 py-1">
+                  <Text className="text-[12px] font-bold text-accent">ETA {etaText}</Text>
+                </View>
+              ) : null}
+              <StatusBadge status={trip.data?.status ?? "not_started"} />
+            </View>
           </View>
 
           <View className="border-t border-border pt-3">
@@ -195,6 +235,12 @@ export default function TripScreen() {
                   <View className="flex-1">
                     <Text className="text-[15px] font-bold text-foreground">
                       {stopLabel(stop.school)}
+                      {stop.id === currentStop?.id && etaText ? (
+                        <Text className="text-[13px] font-bold text-accent">
+                          {"  · ETA "}
+                          {etaText}
+                        </Text>
+                      ) : null}
                     </Text>
                     <Text variant="caption">
                       {stop.children.map((c) => c.child_name).join(", ") || "No children"}

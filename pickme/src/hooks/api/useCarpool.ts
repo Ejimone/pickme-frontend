@@ -2,13 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api-client";
 import type {
-  CarpoolAssignment,
-  CarpoolGroup,
-  CarpoolGroupMember,
-  CarpoolRotationRule,
-  ISODate,
-  Paginated,
-  UUID,
+    CarpoolAssignment,
+    CarpoolGroup,
+    CarpoolGroupMember,
+    CarpoolRotationRule,
+    ISODate,
+    Paginated,
+    UUID,
 } from "@/lib/api-types";
 import { qk } from "@/lib/query-client";
 
@@ -76,7 +76,8 @@ export function useInviteToCarpoolGroup(groupId: UUID) {
 export function useLeaveCarpoolGroup() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (groupId: UUID) => api.post(`/carpool-groups/${groupId}/leave/`),
+    mutationFn: (groupId: UUID) =>
+      api.post(`/carpool-groups/${groupId}/leave/`),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.carpoolGroups() }),
   });
 }
@@ -102,12 +103,18 @@ export function usePutRotationRule(groupId: UUID) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: RotationRuleInput) =>
-      api.put<CarpoolRotationRule>(`/carpool-groups/${groupId}/rotation-rule/`, input),
+      api.put<CarpoolRotationRule>(
+        `/carpool-groups/${groupId}/rotation-rule/`,
+        input,
+      ),
     onSuccess: (rule) => qc.setQueryData(qk.rotationRule(groupId), rule),
   });
 }
 
-export function useAssignments(groupId: UUID | undefined, range?: { from?: ISODate; to?: ISODate }) {
+export function useAssignments(
+  groupId: UUID | undefined,
+  range?: { from?: ISODate; to?: ISODate },
+) {
   return useQuery({
     queryKey: qk.assignments(groupId ?? "", range),
     queryFn: () =>
@@ -128,6 +135,7 @@ export function useGenerateAssignments(groupId: UUID) {
         `/carpool-groups/${groupId}/assignments/generate/`,
         range,
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["assignments", groupId] }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["assignments", groupId] }),
   });
 }

@@ -3,12 +3,12 @@ import { useState } from "react";
 import { ScrollView, View } from "react-native";
 
 import { GroupCard } from "@/components/carpool/GroupCard";
+import { InfoBanner } from "@/components/shared/InfoBanner";
+import { Screen } from "@/components/shared/Screen";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { CodeInput } from "@/components/ui/code-input";
 import { Text } from "@/components/ui/text";
-import { InfoBanner } from "@/components/shared/InfoBanner";
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { Screen } from "@/components/shared/Screen";
 import { useCarpoolGroups, useJoinCarpoolGroup } from "@/hooks/api/useCarpool";
 import { useFamilies } from "@/hooks/api/useFamilies";
 import { useSchools } from "@/hooks/api/useSchools";
@@ -32,7 +32,10 @@ export default function CarpoolTab() {
     if (!familyId || code.length < INVITE_CODE_LENGTH) return;
     setJoinError(undefined);
     try {
-      const res = await joinGroup.mutateAsync({ invite_code: code, family: familyId });
+      const res = await joinGroup.mutateAsync({
+        invite_code: code,
+        family: familyId,
+      });
       setCode("");
       if (res.group?.id) router.push(`/carpool/${res.group.id}`);
     } catch {
@@ -64,13 +67,17 @@ export default function CarpoolTab() {
         )}
 
         <View className="mt-4">
-          <Button label="Create a carpool group" onPress={() => router.push("/carpool/create")} />
+          <Button
+            label="Create a carpool group"
+            onPress={() => router.push("/carpool/create")}
+          />
         </View>
 
         <View className="mt-6 rounded-[10px] border border-border p-4">
           <SectionHeader title="Join with an invite code" />
           <Text variant="caption" className="mb-3 mt-1">
-            Enter the {INVITE_CODE_LENGTH}-character code another parent shared with you.
+            Enter the {INVITE_CODE_LENGTH}-character code another parent shared
+            with you.
           </Text>
           <CodeInput
             value={code}

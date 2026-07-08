@@ -171,11 +171,11 @@ export default function Today() {
         )}
 
         <View className="mt-8 gap-3">
-          <Button label="I'm driving today" onPress={() => router.push("/drive")} />
+          <Button label="Start a journey" onPress={() => router.push("/drive")} />
           <Button
-            label="View week's rotation"
+            label="Follow a journey"
             variant="secondary"
-            onPress={() => router.push("/(tabs)/carpool")}
+            onPress={() => router.push("/journeys")}
           />
         </View>
       </ScrollView>
